@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://danielkl1994.github.io/daniel-qa-landing/sitemap.xml
