@@ -790,36 +790,44 @@ function basis(side){
 </script>
 <script>
 // Google Analytics events (guarded: the page works even if analytics is blocked)
+// Every event carries a plain-Hebrew "detail" so reports read clearly (one custom dimension: detail)
 (function(){
+  var NAMES={hero:'פתיחה',work:'עבודות',reviews:'ביקורות',why:'למה אני',about:'קצת עליי',pricing:'חבילות ומחירים',closing:'קופסת סיום',contact:'טופס יצירת קשר',footer:'תחתית הדף',nav:'תפריט עליון'};
+  var ORDER=['work','reviews','why','about','pricing','closing','contact'];
   function ev(name,params){ if(window.gtag) gtag('event',name,params||{}); }
+  function key(s){ return s.id||(s.classList.contains('closing')?'closing':'')||(s.tagName==='HEADER'?'hero':s.tagName.toLowerCase()); }
+  function area(el){
+    if(el.closest('#a11yw')) return 'תפריט נגישות';
+    if(el.closest('.wafab')) return 'כפתור וואטסאפ צף';
+    var s=el.closest('section,header,footer,nav'); if(!s) return 'אחר';
+    var k=key(s); return NAMES[k]||k;
+  }
+  function label(el){ return ((el.getAttribute('aria-label')||el.textContent||'').replace(/\s+/g,' ').trim().slice(0,50))||'ללא טקסט'; }
   document.addEventListener('click',function(e){
-    var a=e.target.closest('a,button');
-    if(!a) return;
-    var txt=(a.textContent||'').trim().slice(0,60);
-    if(a.classList.contains('pick')){ ev('select_package',{package:['basic_590','pro_990','premium_1490'][+a.dataset.i]||'unknown'}); }
-    else if(a.getAttribute('data-site')){ ev('view_work',{work:a.dataset.work||'almog_nails'}); }
-    else if(a.dataset.work){ ev('view_work',{work:a.dataset.work}); }
-    else if(a.classList.contains('btn')){ ev('cta_click',{label:txt}); }
+    var a=e.target.closest('a,button,summary'); if(!a) return;
+    var where=area(a), what=label(a);
+    if(a.matches('a[href*="wa.me"],a[href*="whatsapp.com"]')){ ev('whatsapp_click',{detail:'וואטסאפ מתוך: '+where,location:where}); return; }
+    if(a.classList.contains('pick')){ var p=['בסיסי 590','מקצועי 990','פרימיום 1,490'][+a.dataset.i]||'לא ידוע'; ev('select_package',{detail:'בחר חבילה: '+p,package:p}); return; }
+    if(a.getAttribute('data-site')||a.dataset.work){ var w=a.dataset.work||what; ev('view_work',{detail:'פתח עבודה: '+w,work:w}); return; }
+    ev('ui_click',{detail:where+' › '+what});
   });
   var f=document.getElementById('f');
-  if(f) f.addEventListener('submit',function(){ ev('generate_lead',{package:(document.getElementById('pkg')||{}).value||''}); });
+  if(f) f.addEventListener('submit',function(){ var p=(document.getElementById('pkg')||{}).value||''; ev('generate_lead',{detail:'שלח טופס: '+p,package:p}); });
 
-  // WhatsApp clicks are the main way leads arrive, so count them on their own
-  document.addEventListener('click',function(e){
-    var a=e.target.closest('a[href*="wa.me"],a[href*="whatsapp.com"]');
-    if(!a) return;
-    var sec=a.closest('section,header,footer,nav');
-    ev('whatsapp_click',{location:(sec&&(sec.id||sec.className.split(' ')[0]||sec.tagName.toLowerCase()))||'floating'});
-  });
-  // how far down people get: one event per section, once per page view
+  // how far down: one event per section (numbered in page order), once per page view
   if('IntersectionObserver' in window){
     var seen={},io=new IntersectionObserver(function(es){es.forEach(function(en){
-      var id=en.target.id||en.target.className.split(' ')[0];
-      if(en.isIntersecting&&!seen[id]){seen[id]=1;ev('section_view',{section:id});io.unobserve(en.target)}
+      var k=key(en.target);
+      if(en.isIntersecting&&!seen[k]){seen[k]=1;ev('section_view',{detail:(ORDER.indexOf(k)+1)+'. '+(NAMES[k]||k),section:k});io.unobserve(en.target)}
     })},{threshold:0,rootMargin:'0px 0px -40% 0px'});
-    ['work','reviews','why','about','pricing','contact'].forEach(function(id){var el=document.getElementById(id);if(el)io.observe(el)});
-    var cl=document.querySelector('.closing');if(cl)io.observe(cl);
+    ORDER.forEach(function(id){var el=id==='closing'?document.querySelector('.closing'):document.getElementById(id);if(el)io.observe(el)});
   }
+  // scroll depth in quarters of the page, once each
+  var marks=[25,50,75,100],done={},t=0;
+  function depth(){ t=0; var h=document.documentElement.scrollHeight-innerHeight; if(h<=0) return;
+    var pct=Math.round(scrollY/h*100);
+    marks.forEach(function(m){ if(pct>=m-2&&!done[m]){ done[m]=1; ev('scroll_depth',{detail:'גלל '+m+'% מהדף',percent:m}); } }); }
+  addEventListener('scroll',function(){ if(!t) t=setTimeout(depth,400); },{passive:true});
 })();
 </script>
 <script>(function(){var f=document.getElementById('wafab'),m=document.getElementById('modal');if(!f)return;
